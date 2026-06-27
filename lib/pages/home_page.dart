@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/adapters.dart';
+import 'package:todo/data/database.dart';
 import 'package:todo/util/in_button.dart';
 import 'package:todo/util/todo_tile.dart';
 
@@ -11,6 +13,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
+  final _mybox = Hive.box('mybox');
+
+  
+
 
   TextEditingController mycontroller = TextEditingController();
 
@@ -18,16 +24,26 @@ class _HomePageState extends State<HomePage> {
     return (mycontroller.text);
   }
 
-  List itemview = [
-    ['Hello', false]
-  ];
+  ToDoDataBase db = ToDoDataBase();
+
+  @override
+  void initState() {
+    
+    if(_mybox.get("ITEMVIEW")==null){
+      db.createInitialData();
+    }else{
+      db.loadData();
+    }
+
+    super.initState();
+    db.updateDatabase();
+  }
 
   void changes(bool? value, int index) {
     setState(() {
-      itemview[index][1] = !itemview[index][1];
+      db.itemview[index][1] = !db.itemview[index][1];
     });
-
-
+    db.updateDatabase();
   }
 
   @override
@@ -35,19 +51,22 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(title: Center(child: Text('ToDo')), elevation: 3, backgroundColor: Colors.yellow,),
       body: ListView.builder(
-        itemCount: itemview.length,
+        itemCount: db.itemview.length,
         itemBuilder: (context, index) {
           return TodoTile(
             deleteFunc: (context) {
               setState(() {
-                itemview.removeAt(index);
+                db.itemview.removeAt(index);
+                db.updateDatabase();
               });
             },
-            taskname: itemview[index][0],
-            checkValue: itemview[index][1],
-            onChanged: (value) => setState(() {
-              itemview[index][1] = !itemview[index][1];
-            },),
+            taskname: db.itemview[index][0],
+            checkValue: db.itemview[index][1],
+            onChanged: (value) { setState(() {
+              db.itemview[index][1] = !db.itemview[index][1];
+            });
+            db.updateDatabase();
+        }
           );
         },
       ),
@@ -77,9 +96,11 @@ class _HomePageState extends State<HomePage> {
                       Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly,children: [
                           InButton(buttname: 'Save', onPressed: () {
                             setState(() {
-                              itemview.add([mycontroller.text, false]);
+                              db.itemview.add([mycontroller.text, false]);
                               mycontroller.clear();
-                            });
+                              db.updateDatabase();
+                            }
+                            );
 
                             Navigator.of(context).pop();
                           }),
